@@ -9,6 +9,6 @@ WORKDIR EmailHarvester
 #COPY requirements.txt .
 RUN python3 -m venv /path/to/venv
 RUN . /path/to/venv/bin/activate
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt --break-system-packages
 ENTRYPOINT ["python3", "EmailHarvester.py"]
 CMD ["-h"]
