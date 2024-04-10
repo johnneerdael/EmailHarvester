@@ -129,7 +129,7 @@ class EmailHarvester(object):
         self.word = word
         self.activeEngine = engineName
         
-    @backoff.on_exception(backoff.expo, (ConnectionError, Timeout), max_tries=5)
+    @backoff.on_exception(backoff.expo, (requests.exceptions.ConnectionError, requests.exceptions.Timeout), max_tries=5)
     def do_search(self):
         try:
             urly = self.url.format(counter=str(self.counter), word=self.word)
@@ -138,7 +138,8 @@ class EmailHarvester(object):
                 r = requests.get(urly, headers=headers, proxies=self.proxy, timeout=10)
             else:
                 r = requests.get(urly, headers=headers, timeout=10)
-
+    
+            # Moved status code check inside the try block
             if r.status_code == 200:  # Checking if request was successful
                 if r.encoding is None:
                     r.encoding = 'UTF-8'
@@ -146,8 +147,9 @@ class EmailHarvester(object):
                 self.totalresults += self.results
             else:
                 print("Request failed with status code: ", r.status_code)
-        except requests.exceptions.RequestException as e:  # This is the correct way to catch all requests-related exceptions
-            print("An error occurred during requests to the server: ", e)
+        except requests.exceptions.RequestException as e:
+            # This will catch any request-related errors, including ConnectionError and Timeout
+        print("An error occurred during requests to the server: ", e)
            
     def process(self):
         while (self.counter < self.limit):
