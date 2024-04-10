@@ -40,6 +40,9 @@ import requests
 import re
 import os
 import validators
+from requests.exceptions import ConnectionError, Timeout
+from time import sleep
+import backoff
 
 from termcolor import colored
 from argparse import RawTextHelpFormatter
@@ -126,19 +129,26 @@ class EmailHarvester(object):
         self.word = word
         self.activeEngine = engineName
         
+    @backoff.on_exception(backoff.expo, (ConnectionError, Timeout), max_tries=5)
     def do_search(self):
         try:
             urly = self.url.format(counter=str(self.counter), word=self.word)
             headers = {'User-Agent': self.userAgent}
-            if(self.proxy):
-                proxies = {self.proxy.scheme: "http://" + self.proxy.netloc}
-                r=requests.get(urly, headers=headers, proxies=proxies)
+            if self.proxy:
+                r = requests.get(urly, headers=headers, proxies=self.proxy, timeout=10)
             else:
-                r=requests.get(urly, headers=headers)
-                
+                r = requests.get(urly, headers=headers, timeout=10)
+
+            if r.encoding is None:
+                r.encoding = 'UTF-8'
+
+            self.results = r.content.decode(r.encoding)
+            self.totalresults += self.results
+
+        except requests.exceptions.HTTPError as e:
+            print("HTTP error occurred: ", e)
         except Exception as e:
-            print(e)
-            sys.exit(4)
+            print("An error occurred during requests to the server: ", e)
 
         if r.encoding is None:
 	          r.encoding = 'UTF-8'
