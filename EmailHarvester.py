@@ -131,6 +131,7 @@ class EmailHarvester(object):
         
     @backoff.on_exception(backoff.expo, (requests.exceptions.ConnectionError, requests.exceptions.Timeout), max_tries=5)
     def do_search(self):
+        r = None  # Initialize `r` to ensure it's in the proper scope
         try:
             urly = self.url.format(counter=str(self.counter), word=self.word)
             headers = {'User-Agent': self.userAgent}
@@ -139,17 +140,19 @@ class EmailHarvester(object):
             else:
                 r = requests.get(urly, headers=headers, timeout=10)
     
-            # Moved status code check inside the try block
-            if r.status_code == 200:  # Checking if request was successful
-                if r.encoding is None:
-                    r.encoding = 'UTF-8'
-                self.results = r.content.decode(r.encoding)
+            # Ensure `r` is not None before accessing its properties
+            if r and r.status_code == 200:
+                self.results = r.text  # Use .text attribute to get decoded content based on headers
                 self.totalresults += self.results
             else:
-                print("Request failed with status code: ", r.status_code)
+                print("Request failed or returned a non-200 status code")
         except requests.exceptions.RequestException as e:
-            # This will catch any request-related errors, including ConnectionError and Timeout
-        print("An error occurred during requests to the server: ", e)
+            # Handle any requests-related exceptions
+            print("An error occurred during requests to the server: ", e)
+    
+        # Make sure to handle the case where `r` remains None (i.e., when request fails)
+        if r is None:
+            print("Failed to obtain a response from the server.")
            
     def process(self):
         while (self.counter < self.limit):
