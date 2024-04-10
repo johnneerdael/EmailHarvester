@@ -139,23 +139,16 @@ class EmailHarvester(object):
             else:
                 r = requests.get(urly, headers=headers, timeout=10)
 
-            if r.encoding is None:
-                r.encoding = 'UTF-8'
-
-            self.results = r.content.decode(r.encoding)
-            self.totalresults += self.results
-
-        except requests.exceptions.HTTPError as e:
-            print("HTTP error occurred: ", e)
-        except Exception as e:
+            if r.status_code == 200:  # Checking if request was successful
+                if r.encoding is None:
+                    r.encoding = 'UTF-8'
+                self.results = r.content.decode(r.encoding)
+                self.totalresults += self.results
+            else:
+                print("Request failed with status code: ", r.status_code)
+        except requests.exceptions.RequestException as e:  # This is the correct way to catch all requests-related exceptions
             print("An error occurred during requests to the server: ", e)
-
-        if r.encoding is None:
-	          r.encoding = 'UTF-8'
-
-        self.results = r.content.decode(r.encoding)
-        self.totalresults += self.results
-    
+           
     def process(self):
         while (self.counter < self.limit):
             self.do_search()
